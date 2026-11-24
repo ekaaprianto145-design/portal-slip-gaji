@@ -173,7 +173,7 @@
             <option value="SEPTEMBER">Bulanan — SEPTEMBER</option>
             <option value="OKTOBER">Bulanan — OKTOBER</option>
             <option value="NOVEMBER">Bulanan — NOVEMBER</option>
-            <option value="DESEMBER">Bulanan — DESEMBER</option>
+            <option value="DESEMBER">Bulanan — BULAN 12</option>
             <option value="12BULAN">Tahunan — 12 BULAN</option>
           </select>
           <button type="button" class="btn-primary" onclick="window.print()">🖨️ Cetak Slip</button>
@@ -191,6 +191,31 @@
     const PORTAL_BIN_ID = "6b05a031ac6210605aa0db14";
     const PORTAL_API_KEY = "$2a$10$445Fc4XldKJrwz.kIfmZ9egiauM0Urvr7Kw2S2jNcfsyZvtMQ4lTi";
     const channel = new BroadcastChannel("konoha_pph21_channel");
+
+    const KEY_BULAN_KALENDER = [
+      "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI",
+      "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"
+    ];
+
+    function getKeyBulanKalenderSekarang() {
+      const idxBulan = new Date().getMonth(); // 0 = Januari ... 11 = Desember
+      return KEY_BULAN_KALENDER[idxBulan] || "JANUARI";
+    }
+
+    function formatLabelPeriode(periodeKey) {
+      if (periodeKey === "DESEMBER") return "BULAN 12";
+      if (periodeKey === "12BULAN") return "12 BULAN / SETAHUN";
+      return periodeKey;
+    }
+
+    function sinkronPeriodeKeKalenderNasional() {
+      const selectEl = document.getElementById("pilihPeriodePortal");
+      if (!selectEl) return;
+      const bulanSekarangKey = getKeyBulanKalenderSekarang();
+      if ([...selectEl.options].some(opt => opt.value === bulanSekarangKey)) {
+        selectEl.value = bulanSekarangKey;
+      }
+    }
 
     let userAktif = null;
 
@@ -262,6 +287,7 @@
 
       errEl.textContent = "";
       userAktif = namaInput;
+      sinkronPeriodeKeKalenderNasional();
       document.getElementById("infoLoginUser").textContent = `Login sebagai: ${userAktif}`;
       document.getElementById("portalLogin").classList.add("hidden");
       document.getElementById("portalDashboard").classList.remove("hidden");
@@ -291,6 +317,7 @@
       const slips = ambilSemuaSlipLokal();
       const paketUser = slips[userAktif];
       const periode = document.getElementById("pilihPeriodePortal").value;
+      const labelPeriode = formatLabelPeriode(periode);
       const target = document.getElementById("slipContainer");
 
       if (!paketUser) {
@@ -331,8 +358,8 @@
                 <tr><td>Penghasilan Neto Setahun</td><td class="num">Rp ${fmt(d.netoThn)}</td></tr>
                 <tr><td>Penghasilan Kena Pajak (PKP)</td><td class="num">Rp ${fmt(d.pkp)}</td></tr>
                 <tr class="highlight"><td>PPh 21 Setahun</td><td class="num">Rp ${fmt(d.pphSetahun)}</td></tr>
-                <tr><td>PPh 21 (Jan–Nov)</td><td class="num">Rp ${fmt(d.totalPphJanNov)}</td></tr>
-                <tr class="total"><td>Take Home Pay (Desember / 12 Bln)</td><td class="num">Rp ${fmt(d.thp12Bulan)}</td></tr>
+                <tr><td>PPh 21 (Jan–Bulan 11)</td><td class="num">Rp ${fmt(d.totalPphJanNov)}</td></tr>
+                <tr class="total"><td>Take Home Pay (Bulan 12 / 12 Bln)</td><td class="num">Rp ${fmt(d.thp12Bulan)}</td></tr>
               </tbody>
             </table>
             <div class="slip-footer">
@@ -347,7 +374,7 @@
       const rawBulanan = paketUser.bulanan || {};
       const b = rawBulanan[periode] || (typeof rawBulanan.gapok !== "undefined" ? rawBulanan : null);
       if (!b) {
-        target.innerHTML = `<p style="color:var(--muted);">Data bulan ${periode} belum tersedia untuk ${userAktif}.</p>`;
+        target.innerHTML = `<p style="color:var(--muted);">Data ${labelPeriode} belum tersedia untuk ${userAktif}.</p>`;
         return;
       }
 
@@ -367,7 +394,7 @@
       target.innerHTML = `
         <div class="slip-paper">
           <table class="slip-meta">
-            <tr><td><strong>Nama</strong>: ${namaKaryawan}</td><td class="num"><strong>Bulan</strong>: ${periode}</td></tr>
+            <tr><td><strong>Nama</strong>: ${namaKaryawan}</td><td class="num"><strong>Bulan</strong>: ${labelPeriode}</td></tr>
             <tr><td><strong>Jabatan</strong>: ${jabatanKaryawan}</td><td class="num"><strong>Status</strong>: ${statusKaryawan} (${terKaryawan})</td></tr>
             <tr><td colspan="2"><strong>Tanggal Kirim</strong>: ${infoTanggal}</td></tr>
           </table>
@@ -399,6 +426,8 @@
         </div>
       `;
     }
+
+    sinkronPeriodeKeKalenderNasional();
 
     channel.onmessage = async (ev) => {
       if (ev.data && ev.data.type === "SLIP_UPDATED" && userAktif) {
