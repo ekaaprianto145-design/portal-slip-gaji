@@ -183,11 +183,12 @@
       </div>
     </main>
   </div>
-
   <script>
     const STORAGE_SLIPS_KEY = "konoha_portal_slips_v1";
     const STORAGE_AKUN_KEY = "konoha_portal_akun_v1";
     const DEFAULT_USER_PASS = "konoha123";
+    const PORTAL_BIN_ID = "6b0574d5ffd5d16053da0a5c";
+    const PORTAL_API_KEY = "$2a$10$445Fc4XldKJrwz.kIfmZ9egiauM0Urvr7Kw2S2jNcfsyZvtMQ4lTi";
     const channel = new BroadcastChannel("konoha_pph21_channel");
 
     let userAktif = null;
@@ -196,11 +197,30 @@
       return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
     }
 
-    function ambilSemuaSlip() {
+    function ambilSemuaSlipLokal() {
       try {
         return JSON.parse(localStorage.getItem(STORAGE_SLIPS_KEY)) || {};
       } catch {
         return {};
+      }
+    }
+
+    async function ambilSemuaSlip() {
+      try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${PORTAL_BIN_ID}/latest`, {
+          method: "GET",
+          headers: {
+            "X-Master-Key": PORTAL_API_KEY
+          }
+        });
+        if (!res.ok) throw new Error("Gagal mengambil data dari JSONBin");
+        const json = await res.json();
+        const slipsCloud = json?.record?.slips || {};
+        localStorage.setItem(STORAGE_SLIPS_KEY, JSON.stringify(slipsCloud));
+        return slipsCloud;
+      } catch (err) {
+        console.warn("Gagal ambil dari JSONBin, pakai data lokal:", err);
+        return ambilSemuaSlipLokal();
       }
     }
 
@@ -216,13 +236,14 @@
       localStorage.setItem(STORAGE_AKUN_KEY, JSON.stringify(map));
     }
 
-    document.getElementById("formLoginKaryawan").addEventListener("submit", (e) => {
+    document.getElementById("formLoginKaryawan").addEventListener("submit", async (e) => {
       e.preventDefault();
       const namaInput = document.getElementById("loginNama").value.trim().toUpperCase();
       const sandiInput = document.getElementById("loginSandi").value;
       const errEl = document.getElementById("loginError");
 
-      const slips = ambilSemuaSlip();
+      errEl.textContent = "⏳ Memeriksa data slip gaji...";
+      const slips = await ambilSemuaSlip();
       const akunMap = ambilAkunMap();
 
       const namaTerdaftar = Object.keys(slips).includes(namaInput) || Object.keys(akunMap).includes(namaInput);
@@ -266,7 +287,7 @@
 
     function renderSlipUser() {
       if (!userAktif) return;
-      const slips = ambilSemuaSlip();
+      const slips = ambilSemuaSlipLokal();
       const paketUser = slips[userAktif];
       const periode = document.getElementById("pilihPeriodePortal").value;
       const target = document.getElementById("slipContainer");
@@ -276,6 +297,10 @@
         return;
       }
 
+      const infoTanggal = paketUser.tanggalKirim
+        ? `${paketUser.tanggalKirim}${paketUser.waktuKirim ? ` • ${paketUser.waktuKirim}` : ""}`
+        : (paketUser.updatedAt || "-");
+
       if (periode === "12BULAN") {
         const d = paketUser.tahunan;
         target.innerHTML = `
@@ -283,7 +308,7 @@
             <table class="slip-meta">
               <tr><td><strong>Nama</strong>: ${d.nama}</td><td class="num"><strong>Periode</strong>: 12 Bulan / Setahun</td></tr>
               <tr><td><strong>Jabatan</strong>: ${d.jabatan}</td><td class="num"><strong>PTKP (${d.status})</strong>: Rp ${fmt(d.ptkp)}</td></tr>
-              <tr><td><strong>Status</strong>: ${d.status} (${d.ter})</td><td class="num"><strong>Terakhir Dikirim</strong>: ${paketUser.updatedAt}</td></tr>
+              <tr><td><strong>Status</strong>: ${d.status} (${d.ter})</td><td class="num"><strong>Tanggal Kirim</strong>: ${infoTanggal}</td></tr>
             </table>
             <table class="slip-table">
               <thead><tr><th>URAIAN PERHITUNGAN SETAHUN</th><th class="num">NOMINAL (Rp)</th></tr></thead>
@@ -319,7 +344,7 @@
           <table class="slip-meta">
             <tr><td><strong>Nama</strong>: ${b.nama}</td><td class="num"><strong>Bulan</strong>: ${periode}</td></tr>
             <tr><td><strong>Jabatan</strong>: ${b.jabatan}</td><td class="num"><strong>Status</strong>: ${b.status} (${b.ter})</td></tr>
-            <tr><td colspan="2"><strong>Terakhir Dikirim</strong>: ${paketUser.updatedAt}</td></tr>
+            <tr><td colspan="2"><strong>Tanggal Kirim</strong>: ${infoTanggal}</td></tr>
           </table>
           <table class="slip-table">
             <thead>
@@ -350,38 +375,18 @@
       `;
     }
 
-    channel.onmessage = (ev) => {
+    channel.onmessage = async (ev) => {
       if (ev.data && ev.data.type === "SLIP_UPDATED" && userAktif) {
+        await ambilSemuaSlip();
         renderSlipUser();
       }
     };
+
     window.addEventListener("storage", (ev) => {
       if (ev.key === STORAGE_SLIPS_KEY && userAktif) {
         renderSlipUser();
       }
     });
   </script>
-  <script>
-  const BIN_ID = "6b0574d5ffd5d16053da0a5c";
-  const API_KEY = "$2a$10$445Fc4XldKJrwz.kIfmZ9egiauM0Urvr7Kw2S2jNcfsyZvtMQ4lTi";
-
-  // Fungsi untuk mengambil data slip gaji dari JSONBin
-  async function ambilDataSlipCloud() {
-    try {
-      const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-        method: 'GET',
-        headers: {
-          'X-Master-Key': API_KEY
-        }
-      });
-      const data = await response.json();
-      console.log("Data slip gaji terambil:", data.record);
-      return data.record.slips || [];
-    } catch (error) {
-      console.error("Gagal mengambil data dari cloud:", error);
-      return [];
-    }
-  }
-</script>
 </body>
 </html>
