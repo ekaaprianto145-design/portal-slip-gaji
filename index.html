@@ -302,21 +302,31 @@
         ? `${paketUser.tanggalKirim}${paketUser.waktuKirim ? ` • ${paketUser.waktuKirim}` : ""}`
         : (paketUser.updatedAt || "-");
 
+      const namaKaryawan = paketUser.nama || paketUser.tahunan?.nama || paketUser.bulanan?.nama || userAktif;
+      const jabatanKaryawan = paketUser.jabatan || paketUser.tahunan?.jabatan || paketUser.bulanan?.jabatan || "-";
+      const statusKaryawan = paketUser.status || paketUser.tahunan?.status || paketUser.bulanan?.status || "-";
+      const terKaryawan = paketUser.ter || paketUser.tahunan?.ter || paketUser.bulanan?.ter || "-";
+
       if (periode === "12BULAN") {
-        const d = paketUser.tahunan;
+        const d = paketUser.tahunan || {};
+        const gapokThn = d.gapokSetahun ?? ((Number(paketUser.gapok) || 0) * 12);
+        const thrThn = d.thrMaster ?? (Number(paketUser.thr) || 0);
+        const bpjsPtThn = (d.bpjsKesPtSetahun || 0) + (d.jhtPtSetahun || 0) + (d.jpPtSetahun || 0);
+        const tunjPlusThr = (d.totalTunjanganThn || 0) + thrThn;
+
         target.innerHTML = `
           <div class="slip-paper">
             <table class="slip-meta">
-              <tr><td><strong>Nama</strong>: ${d.nama}</td><td class="num"><strong>Periode</strong>: 12 Bulan / Setahun</td></tr>
-              <tr><td><strong>Jabatan</strong>: ${d.jabatan}</td><td class="num"><strong>PTKP (${d.status})</strong>: Rp ${fmt(d.ptkp)}</td></tr>
-              <tr><td><strong>Status</strong>: ${d.status} (${d.ter})</td><td class="num"><strong>Tanggal Kirim</strong>: ${infoTanggal}</td></tr>
+              <tr><td><strong>Nama</strong>: ${namaKaryawan}</td><td class="num"><strong>Periode</strong>: 12 Bulan / Setahun</td></tr>
+              <tr><td><strong>Jabatan</strong>: ${jabatanKaryawan}</td><td class="num"><strong>PTKP (${statusKaryawan})</strong>: Rp ${fmt(d.ptkp)}</td></tr>
+              <tr><td><strong>Status</strong>: ${statusKaryawan} (${terKaryawan})</td><td class="num"><strong>Tanggal Kirim</strong>: ${infoTanggal}</td></tr>
             </table>
             <table class="slip-table">
               <thead><tr><th>URAIAN PERHITUNGAN SETAHUN</th><th class="num">NOMINAL (Rp)</th></tr></thead>
               <tbody>
-                <tr><td>Gaji Pokok (12 Bulan)</td><td class="num">Rp ${fmt(d.gapokSetahun)}</td></tr>
-                <tr><td>BPJS PT (Kes + JHT + JP Setahun)</td><td class="num">Rp ${fmt(d.bpjsKesPtSetahun + d.jhtPtSetahun + d.jpPtSetahun)}</td></tr>
-                <tr><td>Total Tunjangan (12 Bulan) + THR</td><td class="num">Rp ${fmt(d.totalTunjanganThn + d.thrMaster)}</td></tr>
+                <tr><td>Gaji Pokok (12 Bulan)</td><td class="num">Rp ${fmt(gapokThn)}</td></tr>
+                <tr><td>BPJS PT (Kes + JHT + JP Setahun)</td><td class="num">Rp ${fmt(bpjsPtThn)}</td></tr>
+                <tr><td>Total Tunjangan (12 Bulan) + THR</td><td class="num">Rp ${fmt(tunjPlusThr)}</td></tr>
                 <tr><td>Biaya Jabatan</td><td class="num">Rp ${fmt(d.biayaJab)}</td></tr>
                 <tr><td>Penghasilan Neto Setahun</td><td class="num">Rp ${fmt(d.netoThn)}</td></tr>
                 <tr><td>Penghasilan Kena Pajak (PKP)</td><td class="num">Rp ${fmt(d.pkp)}</td></tr>
@@ -327,24 +337,38 @@
             </table>
             <div class="slip-footer">
               <div>Disetujui Oleh,<br><br><strong>Hanny Indramulya</strong></div>
-              <div class="num">Penerima,<br><br><strong>${d.nama}</strong></div>
+              <div class="num">Penerima,<br><br><strong>${namaKaryawan}</strong></div>
             </div>
           </div>
         `;
         return;
       }
 
-      const b = paketUser.bulanan[periode];
+      const rawBulanan = paketUser.bulanan || {};
+      const b = rawBulanan[periode] || (typeof rawBulanan.gapok !== "undefined" ? rawBulanan : null);
       if (!b) {
         target.innerHTML = `<p style="color:var(--muted);">Data bulan ${periode} belum tersedia untuk ${userAktif}.</p>`;
         return;
       }
 
+      const kesKry = b.bpjsKesKryBln ?? b.bpjsKry?.kes ?? 0;
+      const jhtKry = b.jhtKryBln ?? b.bpjsKry?.jht ?? 0;
+      const jpKry = b.jpKryBln ?? b.bpjsKry?.jp ?? 0;
+      const kesPt = b.bpjsKesPtBln ?? b.bpjsPt?.kes ?? 0;
+      const jhtPt = b.jhtPtBln ?? b.bpjsPt?.jht ?? 0;
+      const jpPt = b.jpPtBln ?? b.bpjsPt?.jp ?? 0;
+      const thrVal = b.thrBulanDipilih ?? b.thr ?? 0;
+      const tunjVal = b.tunjanganBlnDipilih ?? b.tunjangan ?? 0;
+      const pphVal = b.pphBulanan ?? b.pph21 ?? 0;
+      const brutoVal = b.brutoBulanan ?? b.bruto ?? 0;
+      const potVal = b.totalPotonganBulanan ?? pphVal;
+      const thpVal = b.takeHomePayBulanan ?? b.thp ?? 0;
+
       target.innerHTML = `
         <div class="slip-paper">
           <table class="slip-meta">
-            <tr><td><strong>Nama</strong>: ${b.nama}</td><td class="num"><strong>Bulan</strong>: ${periode}</td></tr>
-            <tr><td><strong>Jabatan</strong>: ${b.jabatan}</td><td class="num"><strong>Status</strong>: ${b.status} (${b.ter})</td></tr>
+            <tr><td><strong>Nama</strong>: ${namaKaryawan}</td><td class="num"><strong>Bulan</strong>: ${periode}</td></tr>
+            <tr><td><strong>Jabatan</strong>: ${jabatanKaryawan}</td><td class="num"><strong>Status</strong>: ${statusKaryawan} (${terKaryawan})</td></tr>
             <tr><td colspan="2"><strong>Tanggal Kirim</strong>: ${infoTanggal}</td></tr>
           </table>
           <table class="slip-table">
@@ -357,20 +381,20 @@
             </thead>
             <tbody>
               <tr><td>Gaji Pokok</td><td class="num">${fmt(b.gapok)}</td><td class="num">-</td></tr>
-              <tr><td>BPJS Kes</td><td class="num">${fmt(b.bpjsKesKryBln)}</td><td class="num">${fmt(b.bpjsKesPtBln)}</td></tr>
-              <tr><td>JHT</td><td class="num">${fmt(b.jhtKryBln)}</td><td class="num">${fmt(b.jhtPtBln)}</td></tr>
-              <tr><td>JP</td><td class="num">${fmt(b.jpKryBln)}</td><td class="num">${fmt(b.jpPtBln)}</td></tr>
-              <tr><td>THR</td><td class="num">-</td><td class="num">${b.thrBulanDipilih > 0 ? fmt(b.thrBulanDipilih) : "-"}</td></tr>
-              <tr><td>Tunjangan</td><td class="num">-</td><td class="num">${fmt(b.tunjanganBlnDipilih)}</td></tr>
-              <tr class="highlight"><td>PPh 21</td><td class="num">-</td><td class="num">${fmt(b.pphBulanan)}</td></tr>
-              <tr><td><strong>TOTAL BRUTO</strong></td><td class="num">-</td><td class="num"><strong>${fmt(b.brutoBulanan)}</strong></td></tr>
-              <tr class="highlight"><td>TOTAL POTONGAN KARYAWAN</td><td class="num">-</td><td class="num">${fmt(b.totalPotonganBulanan)}</td></tr>
-              <tr class="total"><td>TAKE HOME PAY</td><td class="num">-</td><td class="num">${fmt(b.takeHomePayBulanan)}</td></tr>
+              <tr><td>BPJS Kes</td><td class="num">${fmt(kesKry)}</td><td class="num">${fmt(kesPt)}</td></tr>
+              <tr><td>JHT</td><td class="num">${fmt(jhtKry)}</td><td class="num">${fmt(jhtPt)}</td></tr>
+              <tr><td>JP</td><td class="num">${fmt(jpKry)}</td><td class="num">${fmt(jpPt)}</td></tr>
+              <tr><td>THR</td><td class="num">-</td><td class="num">${thrVal > 0 ? fmt(thrVal) : "-"}</td></tr>
+              <tr><td>Tunjangan</td><td class="num">-</td><td class="num">${fmt(tunjVal)}</td></tr>
+              <tr class="highlight"><td>PPh 21</td><td class="num">-</td><td class="num">${fmt(pphVal)}</td></tr>
+              <tr><td><strong>TOTAL BRUTO</strong></td><td class="num">-</td><td class="num"><strong>${fmt(brutoVal)}</strong></td></tr>
+              <tr class="highlight"><td>TOTAL POTONGAN KARYAWAN</td><td class="num">-</td><td class="num">${fmt(potVal)}</td></tr>
+              <tr class="total"><td>TAKE HOME PAY</td><td class="num">-</td><td class="num">${fmt(thpVal)}</td></tr>
             </tbody>
           </table>
           <div class="slip-footer">
             <div>Disetujui Oleh,<br><br><strong>Hanny Indramulya</strong></div>
-            <div class="num">Penerima,<br><br><strong>${b.nama}</strong></div>
+            <div class="num">Penerima,<br><br><strong>${namaKaryawan}</strong></div>
           </div>
         </div>
       `;
