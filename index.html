@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal Slip Gaji Konoha</title>
+  <style>
+    :root {
+      --bg-dark: #0f1117;
+      --bg-card: #181c26;
+      --bg-card-2: #222938;
+      --orange: #ff6b00;
+      --gold: #ffb703;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #2e374b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+
+    body {
+      background: radial-gradient(circle at top, #1f1916 0%, var(--bg-dark) 65%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: #181c26;
+      border-bottom: 2px solid var(--orange);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .badge {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--orange), var(--gold));
+      color: #111; font-weight: 900; display: flex; align-items: center; justify-content: center;
+    }
+    .brand h1 { font-size: 1.05rem; color: var(--gold); }
+    .brand small { color: var(--muted); font-size: 0.76rem; }
+
+    .container { max-width: 920px; margin: 24px auto; padding: 0 16px 40px; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .login-box { max-width: 420px; margin: 50px auto; }
+    .login-box h2 { color: var(--gold); margin-bottom: 6px; }
+    .login-box p { color: var(--muted); font-size: 0.88rem; margin-bottom: 16px; }
+
+    .form-group { margin-bottom: 12px; text-align: left; }
+    label { display: block; font-size: 0.84rem; color: var(--muted); margin-bottom: 5px; }
+
+    input, select {
+      width: 100%;
+      background: #10141d;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 0.9rem;
+    }
+
+    button {
+      cursor: pointer; border: none; border-radius: 8px;
+      padding: 8px 13px; font-weight: 600; font-size: 0.85rem;
+    }
+
+    .btn-primary { background: linear-gradient(135deg, var(--orange), #e05300); color: #fff; }
+    .btn-secondary { background: var(--bg-card-2); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: rgba(239, 68, 68, 0.16); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+    .err { color: #f87171; font-size: 0.84rem; margin-top: 8px; min-height: 18px; }
+    .hidden { display: none !important; }
+
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+
+    .slip-paper {
+      background: #fff; color: #111827; border-radius: 6px;
+      padding: 20px 24px; border: 2px solid #1e293b;
+    }
+
+    .slip-meta, .slip-table {
+      width: 100%; border-collapse: collapse; border: 1.5px solid #1e293b;
+      margin-bottom: 12px; font-size: 0.9rem;
+    }
+
+    .slip-meta td { padding: 4px 10px; }
+    .slip-table th {
+      background: #3b6fd8; color: #fff; padding: 6px 10px;
+      border: 1px solid #2b59b5; text-align: left;
+    }
+    .slip-table td { padding: 5px 10px; border: 1px solid #cbd5e1; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .highlight td { background: #c7d9f8; color: #ea580c; font-weight: 700; }
+    .total td { background: #e2e8f0; font-weight: 700; color: #0f172a; }
+
+    .slip-footer {
+      display: flex; justify-content: space-between; margin-top: 22px; font-size: 0.88rem;
+    }
+
+    @media print {
+      .topbar, .no-print { display: none !important; }
+      body { background: #fff; color: #000; }
+      .container { margin: 0; padding: 0; max-width: 100%; }
+      .card { border: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN KARYAWAN -->
+  <div id="portalLogin" class="card login-box">
+    <h2>🔐 LOGIN PORTAL SLIP GAJI</h2>
+    <p>Masuk menggunakan <strong>Nama</strong> sesuai daftar karyawan untuk melihat slip gaji Anda.</p>
+    <form id="formLoginKaryawan">
+      <div class="form-group">
+        <label for="loginNama">Nama Karyawan</label>
+        <input type="text" id="loginNama" placeholder="Contoh: BUDI" required autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="loginSandi">Sandi Akun</label>
+        <input type="password" id="loginSandi" placeholder="Default: konoha123 (atau sandi pribadi)" required />
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;">Masuk ke Portal</button>
+      <div id="loginError" class="err"></div>
+    </form>
+  </div>
+
+  <!-- HALAMAN PORTAL SETELAH LOGIN -->
+  <div id="portalDashboard" class="hidden">
+    <header class="topbar">
+      <div class="brand">
+        <div class="badge">葉</div>
+        <div>
+          <h1>PORTAL SLIP GAJI KONOHA</h1>
+          <small id="infoLoginUser">Login sebagai: -</small>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-secondary" onclick="ubahSandiAkun()">🔑 Ubah Sandi Saya</button>
+        <button type="button" class="btn-danger" onclick="logoutPortal()">Keluar</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="card">
+        <div class="controls no-print">
+          <label for="pilihPeriodePortal" style="margin:0;">Periode / Jenis Slip:</label>
+          <select id="pilihPeriodePortal" style="max-width:220px;" onchange="renderSlipUser()">
+            <option value="JANUARI">Bulanan — JANUARI</option>
+            <option value="FEBRUARI">Bulanan — FEBRUARI</option>
+            <option value="MARET">Bulanan — MARET</option>
+            <option value="APRIL">Bulanan — APRIL</option>
+            <option value="MEI">Bulanan — MEI</option>
+            <option value="JUNI">Bulanan — JUNI</option>
+            <option value="JULI">Bulanan — JULI</option>
+            <option value="AGUSTUS">Bulanan — AGUSTUS</option>
+            <option value="SEPTEMBER">Bulanan — SEPTEMBER</option>
+            <option value="OKTOBER">Bulanan — OKTOBER</option>
+            <option value="NOVEMBER">Bulanan — NOVEMBER</option>
+            <option value="DESEMBER">Bulanan — DESEMBER</option>
+            <option value="12BULAN">Tahunan — 12 BULAN</option>
+          </select>
+          <button type="button" class="btn-primary" onclick="window.print()">🖨️ Cetak Slip</button>
+        </div>
+
+        <div id="slipContainer"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_SLIPS_KEY = "konoha_portal_slips_v1";
+    const STORAGE_AKUN_KEY = "konoha_portal_akun_v1";
+    const DEFAULT_USER_PASS = "konoha123";
+    const channel = new BroadcastChannel("konoha_pph21_channel");
+
+    let userAktif = null;
+
+    function fmt(n) {
+      return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
+    }
+
+    function ambilSemuaSlip() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_SLIPS_KEY)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function ambilAkunMap() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_AKUN_KEY)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function simpanAkunMap(map) {
+      localStorage.setItem(STORAGE_AKUN_KEY, JSON.stringify(map));
+    }
+
+    document.getElementById("formLoginKaryawan").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const namaInput = document.getElementById("loginNama").value.trim().toUpperCase();
+      const sandiInput = document.getElementById("loginSandi").value;
+      const errEl = document.getElementById("loginError");
+
+      const slips = ambilSemuaSlip();
+      const akunMap = ambilAkunMap();
+
+      const namaTerdaftar = Object.keys(slips).includes(namaInput) || Object.keys(akunMap).includes(namaInput);
+      const sandiBenar = akunMap[namaInput] || DEFAULT_USER_PASS;
+
+      if (!namaTerdaftar) {
+        errEl.textContent = "❌ Nama tidak ditemukan. Pastikan slip gaji sudah dikirim dari Sistem PPh 21.";
+        return;
+      }
+
+      if (sandiInput !== sandiBenar) {
+        errEl.textContent = "❌ Sandi akun salah.";
+        return;
+      }
+
+      errEl.textContent = "";
+      userAktif = namaInput;
+      document.getElementById("infoLoginUser").textContent = `Login sebagai: ${userAktif}`;
+      document.getElementById("portalLogin").classList.add("hidden");
+      document.getElementById("portalDashboard").classList.remove("hidden");
+      renderSlipUser();
+    });
+
+    function logoutPortal() {
+      userAktif = null;
+      document.getElementById("loginSandi").value = "";
+      document.getElementById("portalDashboard").classList.add("hidden");
+      document.getElementById("portalLogin").classList.remove("hidden");
+    }
+
+    function ubahSandiAkun() {
+      if (!userAktif) return;
+      const baru = prompt(`Masukkan sandi baru untuk akun ${userAktif}:`);
+      if (baru && baru.trim()) {
+        const map = ambilAkunMap();
+        map[userAktif] = baru.trim();
+        simpanAkunMap(map);
+        alert("Sandi akun berhasil diperbarui.");
+      }
+    }
+
+    function renderSlipUser() {
+      if (!userAktif) return;
+      const slips = ambilSemuaSlip();
+      const paketUser = slips[userAktif];
+      const periode = document.getElementById("pilihPeriodePortal").value;
+      const target = document.getElementById("slipContainer");
+
+      if (!paketUser) {
+        target.innerHTML = `<p style="color:var(--muted);">Belum ada data slip gaji yang dikirim untuk <strong>${userAktif}</strong>.</p>`;
+        return;
+      }
+
+      if (periode === "12BULAN") {
+        const d = paketUser.tahunan;
+        target.innerHTML = `
+          <div class="slip-paper">
+            <table class="slip-meta">
+              <tr><td><strong>Nama</strong>: ${d.nama}</td><td class="num"><strong>Periode</strong>: 12 Bulan / Setahun</td></tr>
+              <tr><td><strong>Jabatan</strong>: ${d.jabatan}</td><td class="num"><strong>PTKP (${d.status})</strong>: Rp ${fmt(d.ptkp)}</td></tr>
+              <tr><td><strong>Status</strong>: ${d.status} (${d.ter})</td><td class="num"><strong>Terakhir Dikirim</strong>: ${paketUser.updatedAt}</td></tr>
+            </table>
+            <table class="slip-table">
+              <thead><tr><th>URAIAN PERHITUNGAN SETAHUN</th><th class="num">NOMINAL (Rp)</th></tr></thead>
+              <tbody>
+                <tr><td>Gaji Pokok (12 Bulan)</td><td class="num">Rp ${fmt(d.gapokSetahun)}</td></tr>
+                <tr><td>BPJS PT (Kes + JHT + JP Setahun)</td><td class="num">Rp ${fmt(d.bpjsKesPtSetahun + d.jhtPtSetahun + d.jpPtSetahun)}</td></tr>
+                <tr><td>Total Tunjangan (12 Bulan) + THR</td><td class="num">Rp ${fmt(d.totalTunjanganThn + d.thrMaster)}</td></tr>
+                <tr><td>Biaya Jabatan</td><td class="num">Rp ${fmt(d.biayaJab)}</td></tr>
+                <tr><td>Penghasilan Neto Setahun</td><td class="num">Rp ${fmt(d.netoThn)}</td></tr>
+                <tr><td>Penghasilan Kena Pajak (PKP)</td><td class="num">Rp ${fmt(d.pkp)}</td></tr>
+                <tr class="highlight"><td>PPh 21 Setahun</td><td class="num">Rp ${fmt(d.pphSetahun)}</td></tr>
+                <tr><td>PPh 21 (Jan–Nov)</td><td class="num">Rp ${fmt(d.totalPphJanNov)}</td></tr>
+                <tr class="total"><td>Take Home Pay (Desember / 12 Bln)</td><td class="num">Rp ${fmt(d.thp12Bulan)}</td></tr>
+              </tbody>
+            </table>
+            <div class="slip-footer">
+              <div>Disetujui Oleh,<br><br><strong>Hanny Indramulya</strong></div>
+              <div class="num">Penerima,<br><br><strong>${d.nama}</strong></div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const b = paketUser.bulanan[periode];
+      if (!b) {
+        target.innerHTML = `<p style="color:var(--muted);">Data bulan ${periode} belum tersedia untuk ${userAktif}.</p>`;
+        return;
+      }
+
+      target.innerHTML = `
+        <div class="slip-paper">
+          <table class="slip-meta">
+            <tr><td><strong>Nama</strong>: ${b.nama}</td><td class="num"><strong>Bulan</strong>: ${periode}</td></tr>
+            <tr><td><strong>Jabatan</strong>: ${b.jabatan}</td><td class="num"><strong>Status</strong>: ${b.status} (${b.ter})</td></tr>
+            <tr><td colspan="2"><strong>Terakhir Dikirim</strong>: ${paketUser.updatedAt}</td></tr>
+          </table>
+          <table class="slip-table">
+            <thead>
+              <tr>
+                <th>DESKRIPSI</th>
+                <th class="num">KARYAWAN (Rp)</th>
+                <th class="num">PERUSAHAAN (Rp)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Gaji Pokok</td><td class="num">${fmt(b.gapok)}</td><td class="num">-</td></tr>
+              <tr><td>BPJS Kes</td><td class="num">${fmt(b.bpjsKesKryBln)}</td><td class="num">${fmt(b.bpjsKesPtBln)}</td></tr>
+              <tr><td>JHT</td><td class="num">${fmt(b.jhtKryBln)}</td><td class="num">${fmt(b.jhtPtBln)}</td></tr>
+              <tr><td>JP</td><td class="num">${fmt(b.jpKryBln)}</td><td class="num">${fmt(b.jpPtBln)}</td></tr>
+              <tr><td>THR</td><td class="num">-</td><td class="num">${b.thrBulanDipilih > 0 ? fmt(b.thrBulanDipilih) : "-"}</td></tr>
+              <tr><td>Tunjangan</td><td class="num">-</td><td class="num">${fmt(b.tunjanganBlnDipilih)}</td></tr>
+              <tr class="highlight"><td>PPh 21</td><td class="num">-</td><td class="num">${fmt(b.pphBulanan)}</td></tr>
+              <tr><td><strong>TOTAL BRUTO</strong></td><td class="num">-</td><td class="num"><strong>${fmt(b.brutoBulanan)}</strong></td></tr>
+              <tr class="highlight"><td>TOTAL POTONGAN KARYAWAN</td><td class="num">-</td><td class="num">${fmt(b.totalPotonganBulanan)}</td></tr>
+              <tr class="total"><td>TAKE HOME PAY</td><td class="num">-</td><td class="num">${fmt(b.takeHomePayBulanan)}</td></tr>
+            </tbody>
+          </table>
+          <div class="slip-footer">
+            <div>Disetujui Oleh,<br><br><strong>Hanny Indramulya</strong></div>
+            <div class="num">Penerima,<br><br><strong>${b.nama}</strong></div>
+          </div>
+        </div>
+      `;
+    }
+
+    channel.onmessage = (ev) => {
+      if (ev.data && ev.data.type === "SLIP_UPDATED" && userAktif) {
+        renderSlipUser();
+      }
+    };
+    window.addEventListener("storage", (ev) => {
+      if (ev.key === STORAGE_SLIPS_KEY && userAktif) {
+        renderSlipUser();
+      }
+    });
+  </script>
+</body>
+</html>
