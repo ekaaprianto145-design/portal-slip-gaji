@@ -197,8 +197,10 @@
       "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"
     ];
 
+    let userAktif = null;
+
     function getKeyBulanKalenderSekarang() {
-      const idxBulan = new Date().getMonth(); // 0 = Januari ... 11 = Desember
+      const idxBulan = new Date().getMonth();
       return KEY_BULAN_KALENDER[idxBulan] || "JANUARI";
     }
 
@@ -208,16 +210,55 @@
       return periodeKey;
     }
 
-    function sinkronPeriodeKeKalenderNasional() {
-      const selectEl = document.getElementById("pilihPeriodePortal");
-      if (!selectEl) return;
-      const bulanSekarangKey = getKeyBulanKalenderSekarang();
-      if ([...selectEl.options].some(opt => opt.value === bulanSekarangKey)) {
-        selectEl.value = bulanSekarangKey;
-      }
+    function normalisasiPeriodeKey(rawKey) {
+      if (!rawKey) return null;
+      const up = String(rawKey).trim().toUpperCase();
+      if (up === "BULAN 12" || up === "12") return "DESEMBER";
+      if (up === "TAHUNAN" || up === "SETAHUN") return "12BULAN";
+      return up;
     }
 
-    let userAktif = null;
+    function deteksiPeriodeKiriman(paketUser) {
+      if (!paketUser) return null;
+
+      const eksplisit = normalisasiPeriodeKey(
+        paketUser.bulanTerkirim ||
+        paketUser.periodeKirim ||
+        paketUser.bulan ||
+        paketUser.periode
+      );
+      if (eksplisit) return eksplisit;
+
+      if (Array.isArray(paketUser.bulanTersedia) && paketUser.bulanTersedia.length > 0) {
+        return normalisasiPeriodeKey(paketUser.bulanTersedia[paketUser.bulanTersedia.length - 1]);
+      }
+
+      const rawBulanan = paketUser.bulanan || {};
+      const bulanKeys = Object.keys(rawBulanan)
+        .map(normalisasiPeriodeKey)
+        .filter((k) => KEY_BULAN_KALENDER.includes(k));
+      if (bulanKeys.length === 1) return bulanKeys[0];
+
+      if (typeof rawBulanan.gapok !== "undefined" || typeof rawBulanan.thp !== "undefined") {
+        return getKeyBulanKalenderSekarang();
+      }
+
+      if (paketUser.tahunan && !bulanKeys.length) {
+        return "12BULAN";
+      }
+
+      return null;
+    }
+
+    function sinkronPeriodeKeKirimanAtauKalender(paketUser) {
+      const selectEl = document.getElementById("pilihPeriodePortal");
+      if (!selectEl) return;
+
+      const targetKey = deteksiPeriodeKiriman(paketUser) || getKeyBulanKalenderSekarang();
+      if ([...selectEl.options].some((opt) => opt.value === targetKey)) {
+        selectEl.value = targetKey;
+      }
+    }
 
     function fmt(n) {
       return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
@@ -287,7 +328,7 @@
 
       errEl.textContent = "";
       userAktif = namaInput;
-      sinkronPeriodeKeKalenderNasional();
+      sinkronPeriodeKeKirimanAtauKalender(slips[userAktif]);
       document.getElementById("infoLoginUser").textContent = `Login sebagai: ${userAktif}`;
       document.getElementById("portalLogin").classList.add("hidden");
       document.getElementById("portalDashboard").classList.remove("hidden");
@@ -333,6 +374,22 @@
       const jabatanKaryawan = paketUser.jabatan || paketUser.tahunan?.jabatan || paketUser.bulanan?.jabatan || "-";
       const statusKaryawan = paketUser.status || paketUser.tahunan?.status || paketUser.bulanan?.status || "-";
       const terKaryawan = paketUser.ter || paketUser.tahunan?.ter || paketUser.bulanan?.ter || "-";
+
+      const bulanKiriman = deteksiPeriodeKiriman(paketUser);
+      const daftarDiizinkan = Array.isArray(paketUser.bulanTersedia) && paketUser.bulanTersedia.length > 0
+        ? paketUser.bulanTersedia.map(normalisasiPeriodeKey)
+        : (bulanKiriman ? [bulanKiriman] : []);
+
+      if (daftarDiizinkan.length > 0 && !daftarDiizinkan.includes(periode)) {
+        const labelKiriman = bulanKiriman ? formatLabelPeriode(bulanKiriman) : "-";
+        target.innerHTML = `
+          <p style="color:var(--muted);">
+            Slip untuk <strong>${labelPeriode}</strong> belum dikirim dari website utama.
+            ${bulanKiriman ? `Kiriman yang tersedia saat ini: <strong>${labelKiriman}</strong>.` : ""}
+          </p>
+        `;
+        return;
+      }
 
       if (periode === "12BULAN") {
         const d = paketUser.tahunan || {};
@@ -427,17 +484,18 @@
       `;
     }
 
-    sinkronPeriodeKeKalenderNasional();
-
     channel.onmessage = async (ev) => {
       if (ev.data && ev.data.type === "SLIP_UPDATED" && userAktif) {
-        await ambilSemuaSlip();
+        const slips = await ambilSemuaSlip();
+        sinkronPeriodeKeKirimanAtauKalender(slips[userAktif]);
         renderSlipUser();
       }
     };
 
     window.addEventListener("storage", (ev) => {
       if (ev.key === STORAGE_SLIPS_KEY && userAktif) {
+        const slips = ambilSemuaSlipLokal();
+        sinkronPeriodeKeKirimanAtauKalender(slips[userAktif]);
         renderSlipUser();
       }
     });
